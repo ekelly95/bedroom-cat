@@ -1,0 +1,31 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    # Windows only, and not as a preference: the app reads Windows' own
+    # now-playing service, and the winrt wheels it depends on are built for
+    # nothing else. A Linux runner could not install the project, let alone
+    # test it.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Two steps rather than one chained command, so a failure names itself in
+      # the summary instead of both hiding behind a single red cross. Neither is
+      # piped anywhere: piping the test run to something else has masked a
+      # failure in this project before.
+      - name: tests
+        run: uv run pytest
+
+      - name: ruff
+        run: uv run ruff check .

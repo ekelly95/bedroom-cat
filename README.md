@@ -1,5 +1,7 @@
 # Bedroom Cat
 
+[![checks](https://github.com/ekelly95/bedroom-cat/actions/workflows/checks.yml/badge.svg)](https://github.com/ekelly95/bedroom-cat/actions/workflows/checks.yml)
+
 A small Windows companion that shows an animated pixel-art bedroom reflecting
 whatever music is already playing elsewhere on the machine.
 
