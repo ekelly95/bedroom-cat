@@ -57,14 +57,36 @@ def test_a_widescreen_cover_is_letterboxed_not_cropped() -> None:
     cover = halves(150, 83, QColor(220, 30, 30), QColor(30, 30, 220))
     fitted = fit_to_sleeve(cover, SIZE)
 
-    expected = band_colour(dominant_colour(cover))
-    top = fitted.pixelColor(SIZE // 2, 1)
-    assert abs(top.red() - expected.red()) <= 12
-    assert abs(top.blue() - expected.blue()) <= 12
-
     middle = SIZE // 2
     assert fitted.pixelColor(6, middle).red() > fitted.pixelColor(6, middle).blue()
     assert fitted.pixelColor(SIZE - 7, middle).blue() > fitted.pixelColor(SIZE - 7, middle).red()
+
+
+def test_the_wash_behind_a_widescreen_cover_carries_its_colours() -> None:
+    """A flat band failed on dark artwork — near-black bands round a small dark
+    picture read as one blank square. The wash must come from the artwork."""
+    cover = halves(150, 83, QColor(220, 30, 30), QColor(30, 30, 220))
+    fitted = fit_to_sleeve(cover, SIZE)
+
+    left_band = fitted.pixelColor(6, 1)
+    right_band = fitted.pixelColor(SIZE - 7, 1)
+    assert left_band.red() > left_band.blue(), "the wash should be red above the red half"
+    assert right_band.blue() > right_band.red(), "and blue above the blue half"
+
+
+def test_a_dark_cover_still_leaves_a_findable_picture_edge() -> None:
+    """The failure that prompted the wash: a dark music-video thumbnail."""
+    cover = solid(150, 83, QColor(8, 8, 12))
+    fitted = fit_to_sleeve(cover, SIZE)
+
+    # Scan for the hairline rather than deriving its row: Qt's rounding decides
+    # whether the picture is 28 or 29 rows tall, and the test should not care.
+    column = SIZE // 2
+    brightest = max(fitted.pixelColor(column, y).lightness() for y in range(SIZE // 2))
+    inside = fitted.pixelColor(column, SIZE // 2).lightness()
+    assert brightest > inside + 30, (
+        "a dark cover needs a visible hairline or the sleeve reads as blank"
+    )
 
 
 def test_a_tall_cover_is_pillarboxed() -> None:

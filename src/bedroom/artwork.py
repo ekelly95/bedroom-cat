@@ -59,6 +59,33 @@ def band_colour(colour: QColor) -> QColor:
     )
 
 
+def backdrop(cover: QImage, size: int) -> QImage:
+    """A soft wash of the artwork's own colours, filling the whole slot.
+
+    Replaces a flat band colour, which failed badly on dark artwork: a music
+    video thumbnail is mostly near-black, so near-black bands around a small
+    dark picture made the sleeve read as one blank square.
+
+    Reduced to a handful of blocks and blown back up, so it stays chunky enough
+    to belong in pixel art rather than looking like a photographic blur, then
+    darkened so the crisp artwork on top is clearly the subject.
+    """
+    tiny = cover.scaled(
+        5, 5, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation
+    )
+    wash = tiny.scaled(
+        size,
+        size,
+        Qt.AspectRatioMode.IgnoreAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    ).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+
+    painter = QPainter(wash)
+    painter.fillRect(wash.rect(), QColor(10, 8, 14, 110))
+    painter.end()
+    return wash
+
+
 def fit_to_sleeve(cover: QImage, size: int) -> QImage:
     """Scale to fit entirely inside a square slot, never cropping.
 
@@ -73,24 +100,16 @@ def fit_to_sleeve(cover: QImage, size: int) -> QImage:
         Qt.TransformationMode.SmoothTransformation,
     )
 
-    fill = band_colour(dominant_colour(cover))
-    slot = QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
-    slot.fill(fill)
-
+    slot = backdrop(cover, size)
     ox = (size - fitted.width()) // 2
     oy = (size - fitted.height()) // 2
 
     painter = QPainter(slot)
     painter.drawImage(ox, oy, fitted)
     if fitted.width() != size or fitted.height() != size:
-        # A deliberate mount, so letterboxing reads as framing rather than as a
-        # rendering failure.
-        edge = QColor(
-            min(255, int(fill.red() * 1.6) + 20),
-            min(255, int(fill.green() * 1.6) + 20),
-            min(255, int(fill.blue() * 1.6) + 20),
-        )
-        painter.setPen(edge)
+        # A hairline between artwork and wash, so the edge of the picture is
+        # always findable even when both are dark.
+        painter.setPen(QColor(235, 230, 220, 150))
         painter.drawRect(ox - 1, oy - 1, fitted.width() + 1, fitted.height() + 1)
     painter.end()
     return slot
