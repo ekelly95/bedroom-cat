@@ -65,12 +65,18 @@ Specifically:
 - **Transport controls must grey out from the live `controls` flags, per player
   and per moment.** They are not fixed per application: Spotify reported
   `previous` as unavailable throughout this session.
-- **Several players publish at once, all reporting `PLAYING`.** This is the
-  normal case here, not an edge case, which rules out "follow the first session
-  that is playing" — it would pick an arbitrary one of the three. The app
-  follows the session Windows itself names as current, shows a small source
-  selector whenever more than one session exists, and remembers an explicit
-  choice.
+- **Several sessions exist routinely, but usually only one is playing.** Spotify
+  keeps a session while idle and a browser tab keeps one after the video ends,
+  so two or three sessions is the normal state — while the thing actually
+  playing is normally unambiguous. The three-way `PLAYING` tie in the table above
+  was an artifact of deliberately starting all three at once for the test.
+
+  So the app follows the session Windows itself names as current, which is right
+  nearly always. It does **not** use "the first session reporting `PLAYING`" —
+  that picks arbitrarily in exactly the case where it matters. The manual
+  override is a small item in the right-click menu, listed only when more than
+  one session exists, and remembered once chosen. It is an escape hatch, not a
+  feature on the face of the room.
 - **Spotify keeps publishing when the music is playing on a phone**, mirrored
   over Spotify Connect. The room works for remote playback too.
 
