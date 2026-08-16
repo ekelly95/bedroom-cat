@@ -1,0 +1,19 @@
+{
+  "canvas": {
+    "width": 320,
+    "height": 200
+  },
+  "sleeve_slot": {
+    "x": 26,
+    "y": 50,
+    "width": 52,
+    "height": 52
+  },
+  "label_slot": {
+    "x": 117,
+    "y": 80,
+    "width": 12,
+    "height": 7
+  },
+  "cat_breathe_frames": 8
+}

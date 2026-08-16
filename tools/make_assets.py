@@ -13,6 +13,7 @@ Coordinate ranges are half-open throughout, matching the brief: `rect(24, 48,
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -22,6 +23,14 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "proof"
 
 WIDTH, HEIGHT = 320, 200
+
+# Where the app drops live album artwork. x, y, width, height — half-open, and
+# exported to assets/layout.json so the app never restates these numbers.
+SLEEVE_SLOT = (26, 50, 52, 52)
+LABEL_SLOT = (117, 80, 12, 7)
+
+# How many breathing frames the cat cycles through.
+BREATH_FRAMES = (0, 1, 2, 2, 1, 0, 0, 0)
 
 # ---------------------------------------------------------------- palette ---
 # Sampled from the approved daytime reference.
@@ -298,11 +307,12 @@ def draw_rug(a: Art) -> None:
         a.rect(x, 158, x + 3, 160, RUG_EDGE)
 
 
-def draw_sleeve(a: Art, artwork: Image.Image) -> None:
-    """56x56 sleeve with a 52x52 artwork slot inset 2px."""
+def draw_sleeve_frame(a: Art) -> None:
+    """The 56x56 sleeve. Its 52x52 interior is filled at runtime with whatever
+    artwork Windows is publishing, so only the frame is baked into the art."""
     a.rect(24, 48, 80, 104, (232, 226, 210))
     a.outline_rect(24, 48, 80, 104, OUTLINE)
-    a.paste(artwork, 26, 50)
+    a.rect(26, 50, 78, 102, (58, 54, 48))
     a.rect(24, 102, 80, 104, (206, 198, 180))
 
 
@@ -426,7 +436,8 @@ def light_overlay() -> Image.Image:
     return layer
 
 
-def build_room(artwork: Image.Image, *, breath: int = 0, cone: int = 0) -> Image.Image:
+def build_background(cone: int = 0) -> Image.Image:
+    """Everything static: no cat, no album artwork, no lighting."""
     a = Art()
     draw_shell(a)
     draw_picture(a)
@@ -436,13 +447,34 @@ def build_room(artwork: Image.Image, *, breath: int = 0, cone: int = 0) -> Image
     draw_amp(a)
     draw_speaker(a, 0, 14, cone)
     draw_speaker(a, 176, 192, cone)
-    draw_sleeve(a, artwork)
-    draw_turntable(a, 25.0, dominant_colour(artwork))
+    draw_sleeve_frame(a)
+    draw_turntable(a, 25.0, (40, 40, 44))
     draw_plant(a)
     draw_rug(a)
-    draw_cat(a, breath=breath)
-    a.img.alpha_composite(light_overlay())
     return a.img
+
+
+def build_cat_frame(breath: int = 0, ear_flick: int = 0, tail: int = 0) -> Image.Image:
+    """The cat alone, on transparency, at full canvas size.
+
+    Full-canvas frames rather than a cropped sprite plus an offset: the frames
+    are a couple of kilobytes each and it removes a whole class of
+    off-by-one placement bugs.
+    """
+    a = Art()
+    draw_cat(a, breath=breath, ear_flick=ear_flick, tail=tail)
+    return a.img
+
+
+def build_room(artwork: Image.Image, *, breath: int = 0, cone: int = 0) -> Image.Image:
+    """Compose the way the app does, so proofs and runtime cannot drift apart."""
+    room = build_background(cone)
+    room.paste(artwork, (SLEEVE_SLOT[0], SLEEVE_SLOT[1]))
+    label = Image.new("RGB", (LABEL_SLOT[2], LABEL_SLOT[3]), dominant_colour(artwork))
+    room.paste(label, (LABEL_SLOT[0], LABEL_SLOT[1]))
+    room.alpha_composite(build_cat_frame(breath))
+    room.alpha_composite(light_overlay())
+    return room
 
 
 def scale(image: Image.Image, factor: int) -> Image.Image:
@@ -451,8 +483,76 @@ def scale(image: Image.Image, factor: int) -> Image.Image:
     )
 
 
+DEMO_COVERS = (
+    ((214, 92, 76), (38, 54, 84), (238, 214, 168)),
+    ((64, 124, 132), (232, 236, 226), (196, 118, 62)),
+    ((122, 84, 148), (240, 200, 96), (34, 38, 54)),
+)
+
+
+def build_demo_cover(index: int) -> Image.Image:
+    """An invented sleeve for demo mode.
+
+    Drawn rather than borrowed: demo mode must not ship anyone else's artwork.
+    """
+    base, accent, light = DEMO_COVERS[index]
+    cover = Image.new("RGB", (96, 96), base)
+    d = ImageDraw.Draw(cover)
+    if index == 0:
+        d.polygon([(0, 96), (96, 0), (96, 40), (36, 96)], fill=accent)
+        d.ellipse([20, 16, 60, 56], fill=light)
+    elif index == 1:
+        d.rectangle([0, 52, 96, 96], fill=accent)
+        for i, x in enumerate(range(8, 92, 14)):
+            d.rectangle([x, 52 - (i % 4) * 11 - 8, x + 9, 52], fill=light)
+    else:
+        for r in (44, 32, 20, 10):
+            d.ellipse([48 - r, 48 - r, 48 + r, 48 + r], outline=accent, width=3)
+        d.rectangle([0, 78, 96, 96], fill=light)
+    return cover
+
+
+def export_assets() -> None:
+    """Write the PNGs the app loads at runtime."""
+    assets = ROOT / "src" / "bedroom" / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+
+    demo = assets / "demo"
+    demo.mkdir(exist_ok=True)
+    for i in range(len(DEMO_COVERS)):
+        build_demo_cover(i).save(demo / f"cover-{i:02d}.png")
+
+    build_background().save(assets / "background.png")
+    light_overlay().save(assets / "light-day.png")
+
+    cats = assets / "cat"
+    cats.mkdir(exist_ok=True)
+    for i, breath in enumerate(BREATH_FRAMES):
+        build_cat_frame(breath).save(cats / f"breathe-{i:02d}.png")
+
+    (assets / "layout.json").write_text(
+        json.dumps(
+            {
+                "canvas": {"width": WIDTH, "height": HEIGHT},
+                "sleeve_slot": dict(
+                    zip(("x", "y", "width", "height"), SLEEVE_SLOT, strict=True)
+                ),
+                "label_slot": dict(
+                    zip(("x", "y", "width", "height"), LABEL_SLOT, strict=True)
+                ),
+                "cat_breathe_frames": len(BREATH_FRAMES),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"assets      {len(BREATH_FRAMES)} cat frames  -> src/bedroom/assets/")
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
+    export_assets()
     refs = ROOT / "docs" / "reference"
 
     covers = {
@@ -476,10 +576,7 @@ def main() -> int:
     # Breathing proof: the cat's own rhythm, unrelated to playback.
     hero = Image.open(next(iter(available.values())))
     art = fit_artwork(hero)
-    frames = [
-        scale(build_room(art, breath=b).convert("RGB"), 2)
-        for b in (0, 1, 2, 2, 1, 0, 0, 0)
-    ]
+    frames = [scale(build_room(art, breath=b).convert("RGB"), 2) for b in BREATH_FRAMES]
     frames[0].save(
         OUT / "cat-breathing.gif",
         save_all=True,
