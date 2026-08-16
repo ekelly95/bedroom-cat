@@ -269,6 +269,25 @@ There is deliberately **no beat synchronisation** anywhere. That would need
 system audio capture and analysis, and would make the cat look mechanically
 tied to the music instead of alive.
 
+### Notes for the polish pass
+
+The daytime room, the cat and the artwork slot were approved at the visual gate
+on 2026-08-15 as **the foundation, not the final polish**. Constraints carried
+forward from that approval:
+
+- **The bed stays visually quieter than the cat and the album sleeve.** Those two
+  are the focal points; the bed is a large object and will compete for attention
+  if it gains detail, contrast or pattern.
+- **Speaker, record and display animation stays restrained.** These are ambient
+  movement, not the show. The cat carries the personality.
+- **Do not redesign the cat or its tail again** unless testing the complete set
+  of animations reveals a real problem. Both went through several revisions to
+  get here: the head merged into the body and read as a featureless lump, and
+  the tail first vanished behind the body and then read as a row of separate
+  balls. The current construction — a compact cream face well clear of the
+  body's cream chest, and a tail drawn in front of the body outlined as a single
+  silhouette — is the fix for those, not an arbitrary arrangement.
+
 ### No progress decoration at all
 
 foobar2000 publishes no timeline — it reports 0:00 forever — so a progress

@@ -93,6 +93,35 @@ Specifically:
   established — only that it did not during this session. It makes no difference
   to the app, which greys the button from the live flag either way.
 
+## How Windows moves the "current session" marker
+
+Measured 2026-08-15 by switching deliberately between all three players while
+polling twice a second.
+
+| Observed | Behaviour |
+|---|---|
+| A **new** session appears and starts playing | It takes the marker immediately, even though another session is still playing |
+| The current session **pauses** while another is playing | The marker hands off to the one still playing |
+| The current session pauses and **nothing** is playing | The marker stays put |
+| The track changes within the current session | The marker stays put |
+| An **existing paused** session is resumed while the current one is still playing | **The marker does not move** |
+
+Detection latency was well under a second throughout.
+
+**This makes Windows' current session a good default.** It follows what you
+started, hands off sensibly when you pause, and does not flicker to an empty
+room. It also rules out "the first session reporting `PLAYING`": when Brave
+started while Spotify was already playing, enumeration order would have kept
+Spotify, and Windows correctly moved to Brave.
+
+**Its one stale case** is the last row: with foobar2000 playing and a paused
+Brave tab resumed, the marker stayed on foobar2000 and the room would keep
+showing it. That only arises when two players are genuinely playing at once,
+which is not a normal state — and it is exactly what the manual override in the
+right-click menu is for. No cleverer default is worth building: a rule that
+chased the most recent play would let a background tab autoplaying an ad steal
+the room, which is a worse failure than a stale marker during an abnormal one.
+
 ## Development
 
 ```

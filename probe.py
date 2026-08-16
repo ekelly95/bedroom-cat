@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import contextlib
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import timedelta
 
@@ -250,6 +251,22 @@ def _clock(delta: timedelta) -> str:
     return f"{total // 60}:{total % 60:02d}"
 
 
+def _render_compact(snapshots: list[Snapshot]) -> str:
+    """One line per session, for watching which one Windows calls current.
+
+    The app defaults to Windows' own current session, so what matters is how
+    that marker moves as you switch between players — not the metadata.
+    """
+    if not snapshots:
+        return "  (no sessions)"
+    lines = []
+    for s in snapshots:
+        marker = "->" if s.is_current else "  "
+        title = (s.title or "(no title)")[:44]
+        lines.append(f"  {marker} {s.app_id:18s} {s.status:8s} {title}")
+    return "\n".join(lines)
+
+
 def _render(snapshots: list[Snapshot]) -> str:
     if not snapshots:
         return (
@@ -286,20 +303,30 @@ async def _collect(manager: SessionManager) -> list[Snapshot]:
     return [await _snapshot(s, current_id) for s in manager.get_sessions()]
 
 
-async def run(interval: float, once: bool) -> None:
+async def run(interval: float, once: bool, compact: bool) -> None:
     manager = await SessionManager.request_async()
-    print("Watching Windows media sessions. Ctrl+C to stop.\n")
+    started = time.monotonic()
+    print("Watching Windows media sessions. Ctrl+C to stop.\n", flush=True)
     last: object = object()
     tick = 0
     while True:
         snapshots = await _collect(manager)
-        identity = tuple(s.identity() for s in snapshots)
+        if compact:
+            # Ignore position-only churn, but react to the current marker moving.
+            identity = tuple(
+                (s.app_id, s.is_current, s.status, s.title) for s in snapshots
+            )
+        else:
+            identity = tuple(s.identity() for s in snapshots)
         if identity != last:
             last = identity
-            count = len(snapshots)
-            print(f"--- change #{tick}  |  {count} session(s) ---")
-            print(_render(snapshots))
-            print()
+            elapsed = time.monotonic() - started
+            print(
+                f"--- change #{tick}  |  t+{elapsed:6.1f}s  |  {len(snapshots)} session(s) ---",
+                flush=True,
+            )
+            print(_render_compact(snapshots) if compact else _render(snapshots), flush=True)
+            print(flush=True)
             tick += 1
         if once:
             return
@@ -310,9 +337,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true", help="print one snapshot and exit")
     parser.add_argument("--interval", type=float, default=1.0, help="seconds between polls")
+    parser.add_argument(
+        "--compact",
+        action="store_true",
+        help="one line per session, showing which one Windows calls current",
+    )
     args = parser.parse_args()
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(run(args.interval, args.once))
+        asyncio.run(run(args.interval, args.once, args.compact))
     return 0
 
 
