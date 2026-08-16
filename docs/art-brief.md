@@ -280,13 +280,19 @@ forward from that approval:
   if it gains detail, contrast or pattern.
 - **Speaker, record and display animation stays restrained.** These are ambient
   movement, not the show. The cat carries the personality.
-- **Do not redesign the cat or its tail again** unless testing the complete set
-  of animations reveals a real problem. Both went through several revisions to
-  get here: the head merged into the body and read as a featureless lump, and
-  the tail first vanished behind the body and then read as a row of separate
-  balls. The current construction — a compact cream face well clear of the
-  body's cream chest, and a tail drawn in front of the body outlined as a single
-  silhouette — is the fix for those, not an arbitrary arrangement.
+- **Do not redesign the cat or its tail again** unless testing reveals a real
+  problem. Both went through several revisions to get here, and the current
+  construction is the fix for specific failures rather than an arbitrary
+  arrangement:
+  - The **head** is a clear circle with a compact cream face kept well clear of
+    the body's cream chest. When the two pale areas met, the cat lost its face
+    and read as one lump with ears stuck in the middle.
+  - The **tail** is a single tapered polygon, drawn in front of the body. Behind
+    the body it vanished entirely. Built from overlapping circles it read as a
+    row of separate balls — and once those circles sat low and evenly spaced
+    along the cat's underside, they read unmistakably as **six feet**, which is
+    what a fresh pair of eyes saw first. A smooth silhouette with no scalloped
+    bumps is what fixes that; do not rebuild it from circles.
 
 ### No progress decoration at all
 

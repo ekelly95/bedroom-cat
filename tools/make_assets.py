@@ -14,6 +14,7 @@ Coordinate ranges are half-open throughout, matching the brief: `rect(24, 48,
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -86,6 +87,30 @@ AMP_FACE = (52, 48, 46)
 AMP_GLOW = (126, 214, 176)
 
 SUNPATCH = (255, 226, 150, 64)
+
+
+def tapered_stroke(points: list[tuple[float, float, float]]) -> list[tuple[float, float]]:
+    """A smooth outline around a centre-line that changes width along its length.
+
+    Used for the cat's tail. Built from a single polygon rather than a chain of
+    overlapping circles: the circles left scalloped bumps along the silhouette,
+    and a bumpy row along the bottom of a cat reads as toes.
+    """
+    left: list[tuple[float, float]] = []
+    right: list[tuple[float, float]] = []
+    for i, (x, y, half) in enumerate(points):
+        if i == 0:
+            dx, dy = points[1][0] - x, points[1][1] - y
+        elif i == len(points) - 1:
+            dx, dy = x - points[-2][0], y - points[-2][1]
+        else:
+            dx = points[i + 1][0] - points[i - 1][0]
+            dy = points[i + 1][1] - points[i - 1][1]
+        length = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy / length * half, dx / length * half
+        left.append((x + nx, y + ny))
+        right.append((x - nx, y - ny))
+    return left + right[::-1]
 
 
 class Art:
@@ -251,7 +276,6 @@ def draw_speaker(a: Art, x0: int, x1: int, cone_offset: int = 0) -> None:
 def draw_turntable(a: Art, record_angle: float, label_colour) -> None:
     """The one deliberate exception to the flat camera: a shallow top surface so
     the platter and tonearm stay readable."""
-    import math
 
     # Plinth, then a shallow top face carrying the platter.
     a.rect(92, 88, 152, 104, (44, 44, 49))
@@ -339,22 +363,31 @@ def draw_cat(a: Art, breath: int = 0, ear_flick: int = 0, tail: int = 0) -> None
     # Chest sits low and to the right of the head, never touching the face.
     a.ellipse(134, 142, 162, 164, CAT_CREAM)
 
-    # Tail in front of the body, curling round the base. Drawn after the body
-    # on purpose: behind it, the body swallowed it completely.
+    # Tail: wrapped around the cat's right flank, not stretched along the front.
     #
-    # Outlined as one silhouette rather than per-segment. Outlining each segment
-    # made it read as a row of separate balls instead of a tail.
-    beads = (
-        (172, 153, 7), (173, 160, 6), (167, 166, 6),
-        (157, 169, 5), (147, 169, 5), (138, 166, 4),
+    # Three things here are corrections, not choices. It is drawn after the body
+    # because behind it the body swallowed it. It is outlined as one silhouette
+    # because outlining each segment made it a row of separate balls. And it is
+    # kept off the body's underside, tapered, and left unstriped because an
+    # even row of same-sized striped blobs across the bottom read unmistakably
+    # as feet.
+    spine = [
+        (167, 149, 7.0), (173, 156, 6.0), (169, 163, 5.0),
+        (159, 166, 4.0), (148, 164, 3.0), (140, 159, 2.2),
+    ]
+    spine = [(x, y + (tail if i >= 3 else 0), w) for i, (x, y, w) in enumerate(spine)]
+
+    outline = tapered_stroke([(x, y, w + 1) for x, y, w in spine])
+    a.poly(outline, CAT_LINE)
+    a.poly(tapered_stroke(spine), CAT_FUR)
+
+    # Rounded tip, so the stroke does not end in a flat cut.
+    tipx, tipy, tipw = spine[-1]
+    a.ellipse(
+        int(tipx - tipw - 1), int(tipy - tipw - 1),
+        int(tipx + tipw + 1), int(tipy + tipw + 1), CAT_LINE,
     )
-    shifted = [(tx, ty + (tail if i >= 2 else 0), r) for i, (tx, ty, r) in enumerate(beads)]
-    for tx, ty, r in shifted:
-        a.ellipse(tx - r - 1, ty - r - 1, tx + r + 1, ty + r + 1, CAT_LINE)
-    for tx, ty, r in shifted:
-        a.ellipse(tx - r, ty - r, tx + r, ty + r, CAT_FUR)
-    for tx, ty, r in (shifted[1], shifted[3], shifted[5]):
-        a.ellipse(tx - r + 1, ty - r, tx + r - 1, ty + r, CAT_DARK)
+    a.ellipse(int(tipx - tipw), int(tipy - tipw), int(tipx + tipw), int(tipy + tipw), CAT_DARK)
 
     # Ears, drawn before the head so the head outline cuts their bases cleanly.
     a.poly([(110, 130), (114 + ear_flick, 112 - ear_flick), (124, 130)], CAT_FUR, CAT_LINE)
