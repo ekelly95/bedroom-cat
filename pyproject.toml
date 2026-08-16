@@ -18,6 +18,9 @@ bedroom = "bedroom.__main__:main"
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",
+    # Authoring only. The app itself loads the finished PNGs through Qt and
+    # never imports Pillow.
+    "pillow>=11.0",
 ]
 
 [build-system]

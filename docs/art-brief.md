@@ -76,8 +76,22 @@ Then the three lighting variants, appended one at a time:
 > **Evening** — low warm orange sun, long amber light through the window, deep
 > soft shadows, the room golden and drowsy.
 
-> **Night** — dark blue room lit mainly by a warm lamp, the window showing a
-> deep navy sky and distant city lights, everything hushed and low-contrast.
+> **Night** — dark blue room lit by cool moonlight through the window, deep navy
+> sky, a moon over the water and a few distant lights on the far shore,
+> everything hushed and low-contrast.
+
+**Superseded:** the night brief originally asked for a room "lit mainly by a
+warm lamp". The approved night reference kept the daytime's warm, window-shaped
+patch of light on the floor, which cannot be right — a warm rectangle carrying
+the window's mullion pattern, cast at night, under a cool blue moon, with no
+lamp anywhere in the room. Rather than add a lamp object that would have to
+exist unlit in the day and evening art too, the night light is moonlight:
+
+- The floor patch keeps its shape across all three times of day and only changes
+  colour — warm yellow, deep amber, pale blue. One authored shape, three
+  colours, which is close to free.
+- The warmth at night comes instead from a small glow around the amp and
+  turntable, using an element the spec already calls for rather than a new one.
 
 ### Rules the reference must respect
 
@@ -185,6 +199,12 @@ covering columns 24 through 79.
 
 The cat is in front of the sideboard on purpose — it gives the flat room a
 little depth without needing real perspective.
+
+**The lighting overlay sits on top of the album artwork, not under it.** In the
+night reference the sleeve's artwork stayed fully saturated while the rest of
+the room dimmed, and it read as pasted on. Since the artwork arrives from
+Windows at full brightness whatever the hour, it has to be dimmed by the same
+overlay as everything else or it will always look like a sticker.
 
 ### The album artwork slot
 
