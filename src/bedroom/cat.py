@@ -28,11 +28,16 @@ import random
 from dataclasses import dataclass, field
 
 # Seconds for one unhurried breath.
-CALM_PERIOD = 4.2
+#
+# Kept near a second on purpose. The visible movement is only about two logical
+# pixels, and stretched over several seconds that reads as slow drift rather
+# than as breathing — the cat looks broken rather than calm. A short cycle with
+# a small amplitude is what reads as alive.
+CALM_PERIOD = 1.5
 # How much a fully-excited cat shortens that by.
-EXCITEMENT_SPEEDUP = 1.7
+EXCITEMENT_SPEEDUP = 0.35
 # How much a fully-asleep cat lengthens it by.
-DROWSY_SLOWDOWN = 3.4
+DROWSY_SLOWDOWN = 1.4
 
 # Excitement falls to half in this many seconds — long enough to notice, short
 # enough that the cat is back to itself well before the track ends.
@@ -116,7 +121,7 @@ class CatMind:
             - EXCITEMENT_SPEEDUP * self.excitement
             + DROWSY_SLOWDOWN * self.drowsiness
         )
-        return max(0.6, period * self.rng.uniform(0.90, 1.10))
+        return max(0.6, period * self.rng.uniform(0.92, 1.08))
 
     @property
     def period(self) -> float:

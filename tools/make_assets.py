@@ -30,8 +30,10 @@ WIDTH, HEIGHT = 320, 200
 SLEEVE_SLOT = (26, 50, 52, 52)
 LABEL_SLOT = (117, 80, 12, 7)
 
-# How many breathing frames the cat cycles through.
-BREATH_FRAMES = (0, 1, 2, 2, 1, 0, 0, 0)
+# The breathing cycle, as a rise and fall in logical pixels. Symmetrical with
+# only a short rest at the bottom: a long hold made the movement read as a
+# stutter rather than as a breath.
+BREATH_FRAMES = (0, 1, 1, 2, 2, 2, 1, 1, 0, 0)
 
 # ---------------------------------------------------------------- palette ---
 # Sampled from the approved daytime reference.
