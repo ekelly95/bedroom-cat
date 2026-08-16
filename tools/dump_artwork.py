@@ -32,8 +32,13 @@ async def dump(destination: Path) -> int:
             print(f"{app}: no artwork")
             continue
         stream = await props.thumbnail.open_read_async()
-        buffer = Buffer(stream.size)
-        await stream.read_async(buffer, stream.size, InputStreamOptions.READ_AHEAD)
+        # ReadAsync may return a different buffer from the one it was given, so
+        # the return is what to read. See source_windows._read_artwork.
+        supplied = Buffer(stream.size)
+        filled = await stream.read_async(
+            supplied, stream.size, InputStreamOptions.READ_AHEAD
+        )
+        buffer = filled if filled is not None else supplied
         data = bytes(memoryview(buffer))[: buffer.length]
 
         out = destination.with_stem(f"{destination.stem}-{app.split('.')[0].lower()}")

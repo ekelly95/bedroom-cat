@@ -131,8 +131,11 @@ class WindowsSource(QObject):
         while self._running:
             try:
                 await self._poll_once()
-            except OSError as exc:
-                # A player closing mid-read is normal; keep going.
+            except Exception as exc:  # noqa: BLE001 - one bad poll must not end the loop
+                # A player closing mid-read is normal; keep going. Deliberately
+                # broader than OSError: anything that escapes here used to reach
+                # `_run`, which ends the loop, and the room then holds whatever it
+                # last saw for as long as it stays open.
                 self.failed.emit(f"{type(exc).__name__}: {exc}")
             await asyncio.sleep(self._poll_seconds)
 
@@ -144,9 +147,19 @@ class WindowsSource(QObject):
         infos: list[SessionInfo] = []
         by_id: dict[str, object] = {}
         for session in raw:
-            app_id = session.source_app_user_model_id or "(unknown)"
-            state = _STATES.get(session.get_playback_info().playback_status, PlaybackState.STOPPED)
-            props = await session.try_get_media_properties_async()
+            # Per session, not per poll. Reading a session that is closing throws,
+            # and one guard around the whole loop meant a single dying background
+            # player abandoned the poll for every healthy one — the room then sat
+            # on old information for as long as that session kept failing.
+            try:
+                app_id = session.source_app_user_model_id or "(unknown)"
+                state = _STATES.get(
+                    session.get_playback_info().playback_status, PlaybackState.STOPPED
+                )
+                props = await session.try_get_media_properties_async()
+            except Exception as exc:  # noqa: BLE001 - skip the bad player, keep the rest
+                self.failed.emit(f"{type(exc).__name__}: {exc}")
+                continue
             infos.append(
                 SessionInfo(
                     app_id=app_id,
@@ -207,8 +220,15 @@ class WindowsSource(QObject):
             stream = await thumbnail.open_read_async()
             if stream.size == 0:
                 return None
-            buffer = Buffer(stream.size)
-            await stream.read_async(buffer, stream.size, InputStreamOptions.READ_AHEAD)
+            # Read from the buffer ReadAsync hands back, not the one passed in:
+            # the contract says an implementation may return a different buffer,
+            # and every player tested here happens to return the same one. Falling
+            # back keeps the tested behaviour if a binding returns nothing.
+            supplied = Buffer(stream.size)
+            filled = await stream.read_async(
+                supplied, stream.size, InputStreamOptions.READ_AHEAD
+            )
+            buffer = filled if filled is not None else supplied
             return bytes(memoryview(buffer))[: buffer.length]
         except OSError:
             return None

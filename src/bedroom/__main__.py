@@ -36,6 +36,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=ZOOM_LEVELS,
         help="whole-number scale for the room (default: remembered, or 2)",
     )
+    parser.add_argument(
+        "--light",
+        default=None,
+        choices=assets.layout().times_of_day,
+        help="pin the time of day instead of following the clock (for captures)",
+    )
     return parser.parse_args(argv)
 
 
@@ -65,7 +71,7 @@ def resolve_zoom(settings: QSettings, requested: int | None) -> int:
     return min(remembered, ceiling)
 
 
-def run_demo(window: BedroomWindow, settings: QSettings) -> object:
+def run_demo(window: BedroomWindow, light: str | None = None) -> object:
     layout = assets.layout()
     demo = DemoSource()
     covers = [str(p) for p in sorted((assets.ASSETS / "demo").glob("cover-*.png"))]
@@ -80,7 +86,7 @@ def run_demo(window: BedroomWindow, settings: QSettings) -> object:
     def tick() -> None:
         demo.advance(TICK_MS / 1000)
         now = demo.now_playing()
-        when = time_of_day()
+        when = light or time_of_day()
         artwork, colour = fit_static(covers[demo.cover_index], layout.sleeve.width, when)
         playing = now.state is PlaybackState.PLAYING
 
@@ -115,7 +121,9 @@ def run_demo(window: BedroomWindow, settings: QSettings) -> object:
     return timer
 
 
-def run_windows(window: BedroomWindow, settings: QSettings) -> object:
+def run_windows(
+    window: BedroomWindow, settings: QSettings, light: str | None = None
+) -> object:
     from .artwork import ArtworkCache
     from .source_windows import WindowsSource
 
@@ -146,7 +154,7 @@ def run_windows(window: BedroomWindow, settings: QSettings) -> object:
 
     def tick() -> None:
         now = latest["now"]
-        when = time_of_day()
+        when = light or time_of_day()
 
         artwork = colour = None
         if now is not None:
@@ -208,7 +216,11 @@ def main(argv: list[str] | None = None) -> int:
         lambda z: (window.set_zoom(z), settings.setValue("zoom", z))
     )
 
-    source = run_demo(window, settings) if args.demo else run_windows(window, settings)
+    source = (
+        run_demo(window, args.light)
+        if args.demo
+        else run_windows(window, settings, args.light)
+    )
     window.centre_on_screen()
     window.show()
     try:

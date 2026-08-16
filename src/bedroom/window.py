@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import (
     Property,
     QEasingCurve,
     QPoint,
     QPropertyAnimation,
+    QRectF,
     Qt,
     Signal,
 )
 from PySide6.QtGui import QAction, QActionGroup, QColor, QGuiApplication, QImage, QPainter
-from PySide6.QtWidgets import QMenu, QWidget
+from PySide6.QtWidgets import QMenu, QVBoxLayout, QWidget
 
 from . import assets_loader as assets
 from .model import Controls, SessionInfo
@@ -24,6 +27,29 @@ FOLLOW_WINDOWS = ""  # the "no override" sentinel, stored in settings
 _BUTTON_RADIUS = 15
 _BUTTON_GAP = 46
 _BAR_BOTTOM_MARGIN = 30
+
+# Behind the room when it does not divide the window exactly, and around it in
+# fullscreen. Near-black rather than black: it reads as an unlit surround, and a
+# true black edge against the room's dark corners looks like a rendering fault.
+_SURROUND = QColor(12, 11, 16)
+
+# Qt's own "no maximum". Set when the window has to stop being a fixed size.
+_UNBOUNDED = 16777215
+
+
+def screen_scale(zoom: int, dpr: float) -> int:
+    """How many real screen pixels one art pixel gets.
+
+    A logical pixel is not a screen pixel. Windows running at 150% draws every
+    logical pixel across one and a half real ones, so asking for a 3x room got
+    each art pixel painted 4.5 pixels wide — in practice some columns four wide
+    and some five, which is visible on anything with a regular pattern in it and
+    was visible on the floorboards.
+
+    Rounding down rather than up: better a slightly smaller room than a window
+    that overhangs the screen it was measured to fit.
+    """
+    return max(1, int(zoom * dpr))
 
 
 def largest_zoom_that_fits(canvas: tuple[int, int], available: tuple[int, int]) -> int:
@@ -92,7 +118,44 @@ class RoomWidget(QWidget):
         self._apply_zoom()
 
     def _apply_zoom(self) -> None:
-        self.setFixedSize(self._layout.width * self._zoom, self._layout.height * self._zoom)
+        """Size the widget to hold a whole number of screen pixels per art pixel.
+
+        On an unscaled display this is the obvious `canvas x zoom`. On a scaled
+        one it is the nearest logical size that contains the room at a whole
+        screen scale, which can be a fraction of a pixel larger — the surround
+        absorbs that, and a pixel of it cannot be seen.
+        """
+        dpr = self.devicePixelRatioF()
+        scale = screen_scale(self._zoom, dpr)
+        self.setFixedSize(
+            math.ceil(self._layout.width * scale / dpr),
+            math.ceil(self._layout.height * scale / dpr),
+        )
+
+    def set_fill(self, fill: bool) -> None:
+        """Fullscreen hands the widget the whole window; otherwise it is fixed."""
+        if not fill:
+            self._apply_zoom()
+            return
+        self.setMinimumSize(0, 0)
+        self.setMaximumSize(_UNBOUNDED, _UNBOUNDED)
+
+    def room_geometry(self) -> tuple[int, QRectF]:
+        """The room's screen scale, and where it sits in this widget.
+
+        Worked out in screen pixels and converted back at the very end. That
+        order is the whole fix: choosing the size in the widget's own logical
+        coordinates is what let a fractional scale in, because the compositor
+        applies the display's scaling afterwards and nothing here could see it.
+        """
+        dpr = self.devicePixelRatioF()
+        wide, high = self._layout.width, self._layout.height
+        room_w, room_h = round(self.width() * dpr), round(self.height() * dpr)
+        scale = max(1, min(room_w // wide, room_h // high))
+        left, top = (room_w - wide * scale) // 2, (room_h - high * scale) // 2
+        return scale, QRectF(
+            left / dpr, top / dpr, wide * scale / dpr, high * scale / dpr
+        )
 
     def set_frame(self, frame: Frame) -> None:
         self._frame = frame
@@ -108,8 +171,12 @@ class RoomWidget(QWidget):
     # -- controls --------------------------------------------------------
 
     def _button_centres(self) -> list[tuple[str, QPoint, bool]]:
-        y = self.height() - _BAR_BOTTOM_MARGIN
-        cx = self.width() // 2
+        # Hung off the room, not off the widget. In fullscreen those are not the
+        # same rectangle, and controls floating in the surround below the room
+        # look like they belong to the desktop rather than to the app.
+        room = self.room_geometry()[1]
+        y = int(room.bottom()) - _BAR_BOTTOM_MARGIN
+        cx = int(room.center().x())
         can_toggle = self._controls.play or self._controls.pause
         return [
             ("previous", QPoint(cx - _BUTTON_GAP, y), self._controls.previous),
@@ -173,7 +240,10 @@ class RoomWidget(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802 (Qt override)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
-        painter.drawImage(self.rect(), self.render_room())
+        _, room = self.room_geometry()
+        if room.size() != QRectF(self.rect()).size():
+            painter.fillRect(self.rect(), _SURROUND)
+        painter.drawImage(room, self.render_room())
         self._paint_controls(painter)
         painter.end()
 
@@ -188,7 +258,12 @@ class BedroomWindow(QWidget):
         super().__init__()
         self.setWindowTitle("The Bedroom")
         self.room = RoomWidget(zoom)
-        self.room.setParent(self)
+        # A layout rather than a bare parent, so that fullscreen can hand the
+        # room the whole window and the room can centre itself inside it.
+        box = QVBoxLayout(self)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.setSpacing(0)
+        box.addWidget(self.room)
         self.setFixedSize(self.room.size())
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
 
@@ -215,8 +290,28 @@ class BedroomWindow(QWidget):
         self._demo = demo
 
     def set_zoom(self, zoom: int) -> None:
+        if self.isFullScreen():
+            self.toggle_fullscreen()
         self.room.set_zoom(zoom)
         self.setFixedSize(self.room.size())
+
+    def toggle_fullscreen(self) -> None:
+        """Fill the screen, at the largest whole scale that fits.
+
+        Worth having beyond the obvious: the largest windowed size is capped by
+        having to leave room for a title bar and a taskbar, so on a screen that
+        is an exact multiple of the canvas this is the only way to reach that
+        multiple at all.
+        """
+        if self.isFullScreen():
+            self.room.set_fill(False)
+            self.showNormal()
+            self.setFixedSize(self.room.size())
+            return
+        self.setMinimumSize(0, 0)
+        self.setMaximumSize(_UNBOUNDED, _UNBOUNDED)
+        self.room.set_fill(True)
+        self.showFullScreen()
 
     def contextMenuEvent(self, event) -> None:  # noqa: N802 (Qt override)
         menu = QMenu(self)
@@ -239,16 +334,25 @@ class BedroomWindow(QWidget):
             menu.addSeparator()
 
         canvas_width = assets.layout().width
+        dpr = self.room.devicePixelRatioF()
         zoom_menu = menu.addMenu("Size")
         zoom_group = QActionGroup(zoom_menu)
         zoom_group.setExclusive(True)
         for level in ZOOM_LEVELS:
-            label = f"{level}x  ({canvas_width * level} px)"
-            action = QAction(label, zoom_menu, checkable=True)
-            action.setChecked(level == self.room.zoom)
+            # Labelled in real screen pixels, which on a scaled display is not
+            # the number the multiplier suggests.
+            width = canvas_width * screen_scale(level, dpr)
+            action = QAction(f"{level}x  ({width} px)", zoom_menu, checkable=True)
+            action.setChecked(not self.isFullScreen() and level == self.room.zoom)
             action.triggered.connect(lambda _=False, z=level: self.zoom_chosen.emit(z))
             zoom_group.addAction(action)
             zoom_menu.addAction(action)
+
+        zoom_menu.addSeparator()
+        full = QAction("Full screen\tF11", zoom_menu, checkable=True)
+        full.setChecked(self.isFullScreen())
+        full.triggered.connect(self.toggle_fullscreen)
+        zoom_menu.addAction(full)
 
         menu.addSeparator()
         quit_action = QAction("Close", menu)
@@ -258,7 +362,14 @@ class BedroomWindow(QWidget):
 
     def keyPressEvent(self, event) -> None:  # noqa: N802 (Qt override)
         if event.key() == Qt.Key.Key_Escape:
-            self.close()
+            # Escape means "get me out of this", and in fullscreen the thing to
+            # get out of is the fullscreen, not the app.
+            if self.isFullScreen():
+                self.toggle_fullscreen()
+            else:
+                self.close()
+        elif event.key() == Qt.Key.Key_F11:
+            self.toggle_fullscreen()
         elif event.key() == Qt.Key.Key_Space:
             self.playpause.emit()
 

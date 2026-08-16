@@ -54,13 +54,6 @@ def dominant_colour(image: QImage) -> QColor:
     return QColor(r, g, b)
 
 
-def band_colour(colour: QColor) -> QColor:
-    """Darkened, so the artwork stays the brightest thing inside the sleeve."""
-    return QColor(
-        int(colour.red() * 0.55), int(colour.green() * 0.55), int(colour.blue() * 0.55)
-    )
-
-
 # How bright and how saturated a colour has to be before it can pass for a lit
 # panel. Hue is never touched: the hue is the part that says which record is on.
 DISPLAY_LIGHTNESS = (0.46, 0.72)
@@ -193,7 +186,11 @@ class ArtworkCache:
     def __init__(self, size: int, capacity: int = 8) -> None:
         self._size = size
         self._capacity = capacity
-        self._entries: dict[tuple, tuple[QImage, QColor]] = {}
+        # `None` is a remembered failure, not an absence. Artwork that will not
+        # decode is still republished on every poll, and without this the app
+        # tried to decode the same broken thumbnail eight times a second for as
+        # long as the track was playing.
+        self._entries: dict[tuple, tuple[QImage, QColor] | None] = {}
         self._order: list[tuple] = []
 
     def get(self, key: tuple, data: bytes | None, when: str) -> tuple[QImage, QColor] | None:
@@ -204,15 +201,15 @@ class ArtworkCache:
             return self._entries[entry_key]
 
         cover = decode(data)
-        if cover is None:
-            return None
-        # The dominant colour is sampled from the *original* cover, not the
-        # graded one: it drives the record label and the amp, and those should
-        # follow the record rather than the hour.
-        entry = (
-            grade_sleeve(fit_to_sleeve(cover, self._size), when),
-            dominant_colour(cover),
-        )
+        entry = None
+        if cover is not None:
+            # The dominant colour is sampled from the *original* cover, not the
+            # graded one: it drives the record label and the amp, and those
+            # should follow the record rather than the hour.
+            entry = (
+                grade_sleeve(fit_to_sleeve(cover, self._size), when),
+                dominant_colour(cover),
+            )
 
         self._entries[entry_key] = entry
         self._order.append(entry_key)

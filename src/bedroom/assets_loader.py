@@ -104,9 +104,3 @@ def record_frames(when: str) -> tuple[QImage, ...]:
     return tuple(
         load(f"record/{when}/{i:02d}.png") for i in range(layout().record_frames)
     )
-
-
-@lru_cache(maxsize=1)
-def demo_covers() -> tuple[QImage, ...]:
-    covers = sorted((ASSETS / "demo").glob("cover-*.png"))
-    return tuple(load(f"demo/{p.name}") for p in covers)

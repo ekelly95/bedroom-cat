@@ -3,14 +3,55 @@
 A small Windows companion that shows an animated pixel-art bedroom reflecting
 whatever music is already playing elsewhere on the machine.
 
+![The room playing, paused, and playing again](docs/proof/window-loop.gif)
+
+Every picture on this page is a capture of the real window, not a render made
+for the occasion. The record turns while music plays and coasts to a stop when
+it is paused. The cat keeps breathing either way — it runs on its own clock, not
+on the music.
+
 It reads Windows' own "now playing" information. It never captures audio, never
 analyses sound, never plays music itself, never scans a library, and never talks
 to Spotify's servers.
+
+The window is the one thing that follows the real clock rather than playback:
+
+| Day | Evening | Night |
+|---|---|---|
+| ![The room by day](docs/proof/window-day.png) | ![The room in the evening](docs/proof/window-evening.png) | ![The room at night](docs/proof/window-night.png) |
+
+One album across all three, so the only thing changing there is the light. The
+other direction — one hour, three covers — is what the room does with whatever is
+playing:
+
+| Spotify, 300 × 300 | foobar2000, 600 × 600 | YouTube in Brave, 150 × 83 |
+|---|---|---|
+| ![A square cover in the sleeve](docs/proof/window-spotify.png) | ![A larger square cover in the sleeve](docs/proof/window-foobar2000.png) | ![A widescreen video still, letterboxed in the sleeve](docs/proof/window-brave.png) |
+
+Nothing is ever cropped. The widescreen video still on the right is fitted whole
+and mounted in bands taken from its own colours, so it reads as a deliberately
+framed print rather than a broken render. Each record tints the sleeve, the tiny
+label on the turntable and the amp's readout — and nothing else, because
+recolouring the room to match the sleeve stops the room being a room.
 
 ## Running it
 
 ```
 uv run bedroom
+```
+
+Right-click the room for the size, the source override and the close item.
+**F11** fills the screen and Escape comes back out — worth knowing, because the
+largest windowed size has to leave room for a title bar and a taskbar, so on a
+screen that divides evenly into 320 × 200 fullscreen is the only way to reach
+that size at all.
+
+There are three flags:
+
+```
+uv run bedroom --demo         # an invented player, for when nothing is playing
+uv run bedroom --zoom 3       # 2, 3 or 4 — the size is remembered between runs
+uv run bedroom --light night  # pin the hour instead of following the clock
 ```
 
 ## The probe
@@ -127,4 +168,21 @@ the room, which is a worse failure than a stale marker during an abnormal one.
 ```
 uv run pytest
 uv run ruff check .
+uv run python tools/make_assets.py      # rebuild the art, and its own proofs
 ```
+
+Every picture in this README is captured from the running window, and none of
+them is written by the bake. That separation is deliberate: `make_assets.py`
+composites the room through a second copy of the app's pipeline, the two copies
+drifted apart once already, and a proof made by the copy is not proof of what
+ships. The captures are `window-*.png`; the bake's own renders are `room-*.png`
+and are development aids, nothing more.
+
+```
+.\tools\capture_window.ps1              # one still, whole window
+.\tools\capture_window.ps1 -Room        # the room alone, no title bar
+.\tools\capture_window.ps1 -Seconds 15  # a GIF of the room actually running
+```
+
+`--light` pins the time of day, which is how the day, evening and night pictures
+above were taken one after another instead of eight hours apart.

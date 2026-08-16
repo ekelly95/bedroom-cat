@@ -85,7 +85,12 @@ class Checker:
         self.check(bool(now.title), "reports a title")
         self.check(now.state is not PlaybackState.STOPPED, "reports an active playback state")
 
-        entry = self.cache.get(now.track_key, now.artwork)
+        # One band for the whole frame: the sleeve is graded to match the room it
+        # is dropped into, so the cache is keyed on the hour as well as the track.
+        # Nothing in the suite can reach this file — it needs a live Windows
+        # session — so this call going stale is only ever caught by running it.
+        when = time_of_day()
+        entry = self.cache.get(now.track_key, now.artwork, when)
         if now.artwork is None:
             self.check(False, "publishes artwork")
         else:
@@ -118,7 +123,7 @@ class Checker:
                 # A still, so the record is parked at frame 0 rather than caught
                 # mid-turn. It is still the sprite that draws it.
                 record_frame=0,
-                light=time_of_day(),
+                light=when,
                 dim=not playing,
                 playing=playing,
             )

@@ -36,7 +36,12 @@ def main() -> int:
         if now is None or seen.get("done"):
             return
         seen["done"] = True
-        entry = cache.get(now.track_key, now.artwork)
+        # One band for the whole frame: the sleeve is graded to match the room it
+        # is dropped into, so the cache is keyed on the hour as well as the track.
+        # Nothing in the suite can reach this file — it needs a live Windows
+        # session — so this call going stale is only ever caught by running it.
+        when = time_of_day()
+        entry = cache.get(now.track_key, now.artwork, when)
         artwork = colour = None
         if entry is not None:
             artwork, colour = entry
@@ -63,7 +68,7 @@ def main() -> int:
                 # A still, so the record is parked at frame 0 rather than caught
                 # mid-turn. It is still the sprite that draws it.
                 record_frame=0,
-                light=time_of_day(),
+                light=when,
                 dim=not playing,
                 playing=playing,
             )

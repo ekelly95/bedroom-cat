@@ -183,8 +183,11 @@ async def _read_artwork(thumbnail) -> Artwork:
         if size == 0:
             art.read_error = "stream reported zero bytes"
             return art
-        buffer = Buffer(size)
-        await stream.read_async(buffer, size, InputStreamOptions.READ_AHEAD)
+        # ReadAsync may return a different buffer from the one it was given, so
+        # the return is what to read. See source_windows._read_artwork.
+        supplied = Buffer(size)
+        filled = await stream.read_async(supplied, size, InputStreamOptions.READ_AHEAD)
+        buffer = filled if filled is not None else supplied
         data = bytes(memoryview(buffer))[: buffer.length]
         art.byte_count = len(data)
         art.detected_format = _image_format(data)

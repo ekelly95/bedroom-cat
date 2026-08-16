@@ -791,6 +791,29 @@ def dominant_colour(image: Image.Image) -> tuple[int, int, int]:
     return max(counts)[1]
 
 
+def backdrop(cover: Image.Image, size: int) -> Image.Image:
+    """A soft wash of the artwork's own colours, filling the whole slot.
+
+    **The twin of `bedroom.artwork.backdrop`, and the two must move together.**
+    They are the same algorithm in two languages because the app composites live
+    through Qt and the bake draws through Pillow. They came apart once already:
+    this side kept mounting artwork in a flat band long after the app stopped,
+    and the only proof it showed was the letterboxed one, so the picture held up
+    as evidence was the one picture that had gone stale.
+
+    Reduced to a handful of blocks and blown back up, so it stays chunky enough
+    to belong in pixel art rather than looking like a photographic blur, then
+    darkened so the crisp artwork on top is clearly the subject.
+
+    Not bit-identical to the Qt side and cannot be: the two libraries filter
+    differently. Same five blocks, same darkening, same intent.
+    """
+    tiny = cover.convert("RGB").resize((5, 5), Image.LANCZOS)
+    wash = tiny.resize((size, size), Image.BILINEAR).convert("RGBA")
+    shade = Image.new("RGBA", wash.size, (10, 8, 14, 110))
+    return Image.alpha_composite(wash, shade).convert("RGB")
+
+
 def display_colour(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
     """An album colour made fit for the amp's readout.
 
@@ -883,17 +906,18 @@ def fit_artwork(cover: Image.Image, size: int = 52) -> Image.Image:
     nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
     art = cover.resize((nw, nh), Image.LANCZOS)
 
-    fill = tuple(int(c * 0.55) for c in dominant_colour(cover))
-    slot = Image.new("RGB", (size, size), fill)
+    slot = backdrop(cover, size)
     ox, oy = (size - nw) // 2, (size - nh) // 2
     slot.paste(art, (ox, oy))
 
     if (nw, nh) != (size, size):
-        # A deliberate mount, so letterboxing does not read as a broken render.
-        border = tuple(min(255, int(c * 1.6) + 20) for c in fill)
-        ImageDraw.Draw(slot).rectangle(
-            [ox - 1, oy - 1, ox + nw, oy + nh], outline=border, width=1
+        # A hairline between artwork and wash, so the edge of the picture is
+        # always findable even when both are dark.
+        overlay = Image.new("RGBA", slot.size, (0, 0, 0, 0))
+        ImageDraw.Draw(overlay).rectangle(
+            [ox - 1, oy - 1, ox + nw, oy + nh], outline=(235, 230, 220, 150), width=1
         )
+        slot = Image.alpha_composite(slot.convert("RGBA"), overlay).convert("RGB")
     return slot
 
 

@@ -533,6 +533,71 @@ corrected to say so.
 which is the same settled decision recorded above, restated here because a
 spinning record is precisely where someone will be tempted.
 
+### A logical pixel is not a screen pixel — 2026-08-16
+
+*Nearest-neighbour belongs at the other end of the pipeline* has been in this
+document since the beginning, and the code did exactly what it said: the room
+was drawn into the window with smoothing off, at a whole-number scale. It was
+still wrong on the machine it was written on, and had been all along.
+
+**Windows was applying a second scale nobody had accounted for.** The display
+runs at 150%, so every logical pixel Qt was given covered one and a half real
+ones. At the middle size the room was being drawn at 4.5 screen pixels per art
+pixel — hard-edged, because the smoothing was off, but *irregular*: some columns
+four wide and some five. It shows most on anything with a repeating pattern,
+which in this room means the floorboards, the record's groove rings and the
+window mullions. It had never been noticed because every proof render was made
+offline at an exact 2x, where the problem cannot appear.
+
+**The scale is now chosen in screen pixels and converted back, not the other way
+round.** `screen_scale` takes the requested multiplier and the display's own
+scaling and returns a whole number of real pixels; `room_geometry` centres the
+room on that. Where the two do not divide, the window is sized to the nearest
+logical size that contains the room and the remainder is filled with `_SURROUND`
+— at 150% that remainder is one pixel, which is not findable.
+
+**Fullscreen is part of the same fix, not a separate feature.** The largest
+windowed size has to leave room for a title bar and a taskbar, so on a 1280 × 800
+desktop the 4x option can never actually be used. Fullscreen can: it lands at 6
+screen pixels per art pixel and fills a 1920 × 1200 panel exactly, edge to edge,
+with no surround at all. Escape leaves fullscreen rather than closing the app —
+in fullscreen, the thing a person wants out of is the fullscreen.
+
+The general rule: **whole-number scaling has to be measured against the screen,
+not against the window.** A whole number of the wrong unit is still fractional.
+
+### The pipeline has a twin, and the twins drift — 2026-08-16
+
+The room is composited twice. `scene.compose` does it live through Qt, and
+`make_assets.build_room` does it again through Pillow so the art can be judged
+without running the app. `build_room` already carries a warning that it must
+match; that warning was not enough.
+
+**The sleeve's mounting came apart and nobody saw it for a day.** `artwork.py`
+replaced the flat band behind letterboxed artwork with `backdrop`, a wash of the
+cover's own colours — the fix for a dark video thumbnail sitting in near-black
+bands and the whole sleeve reading as one blank square. `make_assets.fit_artwork`
+went on filling a flat band. An external audit found it.
+
+What made it worse than an ordinary inconsistency: **a square cover hides the
+fill completely**, so the two agreed on almost every picture. The one image where
+they disagreed was the letterboxed one — which is exactly the image the README
+had chosen to demonstrate the rule. The picture held up as evidence was the only
+picture that was wrong.
+
+Two things changed. `make_assets.backdrop` is now the twin of
+`artwork.backdrop`, with each docstring naming the other; they cannot be
+bit-identical because Qt and Pillow filter differently, and they do not need to
+be, but they must agree in kind. And **the README's pictures now come from the
+real window instead of from the bake** — `tools/capture_window.ps1 -Room`,
+captured with `--light` pinning the hour so all three bands can be taken in a
+minute. The bake's own renders stay, under `room-*.png`, as development aids
+with no claim on being evidence.
+
+The general rule this leaves behind: **a copy of the pipeline can illustrate the
+art, but only the app can be evidence of the app.** Where the two disagree, the
+capture is right by definition.
+
 ### No progress decoration at all
 
 foobar2000 publishes no timeline — it reports 0:00 forever — so a progress

@@ -8,7 +8,6 @@ from PySide6.QtGui import QColor, QImage, QPainter
 from bedroom.artwork import (
     DISPLAY_LIGHTNESS,
     ArtworkCache,
-    band_colour,
     display_colour,
     dominant_colour,
     fit_to_sleeve,
@@ -104,14 +103,6 @@ def test_a_tall_cover_is_pillarboxed() -> None:
     assert centre.green() > side.green(), "the artwork should be brighter than its bands"
 
 
-def test_bands_are_darker_than_the_artwork() -> None:
-    colour = QColor(180, 160, 140)
-    band = band_colour(colour)
-    assert band.red() < colour.red()
-    assert band.green() < colour.green()
-    assert band.blue() < colour.blue()
-
-
 def _png(colour: QColor, size: int = 64) -> bytes:
     from PySide6.QtCore import QBuffer
 
@@ -153,6 +144,40 @@ def test_cache_ignores_a_track_with_no_artwork() -> None:
 def test_cache_survives_bytes_that_are_not_an_image() -> None:
     cache = ArtworkCache(SIZE)
     assert cache.get(("app", "t", "a", "al"), b"this is not a picture", "day") is None
+
+
+def test_a_thumbnail_that_will_not_decode_is_only_decoded_once(monkeypatch) -> None:
+    """A failure has to be remembered, not just survived.
+
+    Windows republishes the same thumbnail on every poll and the room redraws
+    eight times a second, so artwork that cannot be decoded was being decoded
+    again on every tick for as long as the track played. The cost of the
+    successful path is exactly why this cache exists; the failing path was
+    getting none of the benefit.
+    """
+    from bedroom import artwork
+
+    calls = []
+    real = artwork.decode
+
+    def counted(data: bytes):
+        calls.append(data)
+        return real(data)
+
+    monkeypatch.setattr(artwork, "decode", counted)
+
+    cache = ArtworkCache(SIZE)
+    for _ in range(5):
+        assert cache.get(("app", "t", "a", "al"), b"not a picture", "day") is None
+    assert len(calls) == 1, f"decoded {len(calls)} times, should have been remembered"
+
+
+def test_a_remembered_failure_still_counts_against_capacity() -> None:
+    """Otherwise a run of broken covers grows the cache without bound."""
+    cache = ArtworkCache(SIZE, capacity=2)
+    for i in range(3):
+        cache.get(("app", f"t{i}", "", ""), b"not a picture", "day")
+    assert len(cache) == 2
 
 
 @pytest.mark.parametrize(
