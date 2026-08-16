@@ -50,9 +50,11 @@ and each field is used only if it arrives.
 
 Specifically:
 
-- **Nothing essential can depend on track position.** foobar2000 publishes no
-  timeline whatsoever, so any progress indication has to be an optional
-  decoration that simply isn't drawn when the numbers aren't there.
+- **v0.1 shows no progress indication at all.** foobar2000 publishes no timeline
+  whatsoever, so a progress decoration would appear for two players and vanish
+  for the third. Behaving identically everywhere is worth more than a decoration
+  the room does not need, so it is simply not built rather than conditionally
+  hidden. No workaround is attempted.
 - **Album is effectively Spotify-only.** It cannot appear anywhere the layout
   depends on it.
 - **Artwork varies wildly in shape and size** — from a 150×83 widescreen video

@@ -23,12 +23,14 @@ produce something that looks like pixel art from a distance but has thousands of
 colours, soft edges, and an inconsistent grid, which is worse than useless as a
 source. Ask for a clean illustration instead and let me do the pixel work.
 
-Generate **three images with identical composition**, differing only in light.
-If the tool supports it, generate the daytime one first and then ask for the
-other two as re-lights of the same picture.
+**Generate the daytime image first, on its own.** Once you are happy with it,
+produce evening and night as *relighting edits of that approved image* — not as
+fresh generations. Three independent generations will not agree with each other
+on where anything is, and the whole point of the three is that only the light
+differs.
 
-Send me whichever ones you like. If none of them feel right, say so — I can work
-from a description alone, and a bad reference is worse than none.
+If none of the daytime attempts feel right, say so — I can work from the spec
+alone, and a bad reference is worse than none.
 
 ### The prompt
 
@@ -47,10 +49,12 @@ from a description alone, and a bad reference is worse than none.
 > Right half of the room: a window with a simple four-pane frame and a sill,
 > and below it a single bed with a rumpled blanket and one pillow.
 >
-> Centre foreground: a small round rug on the floorboards, and sitting on it,
-> facing the speakers, an extremely fat cat — round as a loaf of bread, short
-> legs tucked under, thick tail curled round, contented half-closed eyes. The
-> cat is the heart of the picture.
+> Centre foreground: a small round rug on the floorboards, and sitting on it, an
+> extremely fat cat — round as a loaf of bread, short legs tucked under, thick
+> tail curled round, contented half-closed eyes. The cat is drawn in
+> three-quarter profile, turned to its left so it faces the stereo on the left
+> of the room, with both ears and the curve of its back clearly visible. The cat
+> is the heart of the picture.
 >
 > A few restrained extras and no more: a potted plant, a mug, a small framed
 > picture on the wall.
@@ -59,10 +63,10 @@ from a description alone, and a bad reference is worse than none.
 > clearly separated with breathing space around it, nothing overlapping
 > confusingly.
 >
-> Style: limited-palette pixel-art-inspired illustration in the spirit of a
-> late-1990s handheld game. Chunky readable shapes, strong silhouettes, flat
-> colour, minimal shading. No gradients, no glow, no lens flare, no blur, no
-> depth of field, no text or lettering anywhere.
+> Style: clean, flat concept illustration intended to be redrawn later as pixel
+> art. Chunky readable shapes, strong silhouettes, hard edges, limited colours,
+> and minimal flat shading. No pixel texture, gradients, glow, blur, depth of
+> field, text, or lettering.
 
 Then the three lighting variants, appended one at a time:
 
@@ -80,18 +84,25 @@ Then the three lighting variants, appended one at a time:
 If a generated image breaks one of these, it is not usable and is worth
 regenerating:
 
-1. **Flat side-on.** No three-quarter view, no perspective, no floor receding
-   into the distance.
+1. **Flat side-on.** No three-quarter view of the room, no perspective, no floor
+   receding into the distance. **One deliberate exception:** the turntable alone
+   uses a shallow stylised top surface, so that the circular platter and the
+   tonearm stay readable — a strictly front-on camera would see the platter
+   edge-on and lose them entirely. This cheat applies to the turntable and
+   nothing else, and must not pull the rest of the room into perspective.
 2. **The album sleeve is a perfect square, face-on, and completely
    unobstructed.** Nothing leans against it or crosses in front of it. Its
    interior can be blank, plain, or an abstract shape — the real album art is
    inserted there by the app, so whatever the generator puts inside is
    discarded.
-3. **The cat is unmistakably fat** and clearly readable as a separate silhouette
-   against the floor and rug behind it.
+3. **The cat is unmistakably fat**, in three-quarter profile turned to its left
+   towards the stereo, and clearly readable as a separate silhouette against the
+   floor and rug behind it.
 4. **No text anywhere**, including on the sleeve, posters or record labels.
-5. **The composition is identical across all three lighting versions** — same
-   objects in the same places, only the light changes.
+5. **The composition is identical across all three lighting versions.** This is
+   why evening and night are produced as relighting edits of the approved
+   daytime image rather than generated separately — same objects in the same
+   places, only the light changes.
 
 ---
 
@@ -101,12 +112,16 @@ The canvas is **320 × 200 logical pixels**, displayed at 2× (640 × 400) by
 default. All coordinates below are in logical pixels, origin at the top left,
 and are what I author the sprites to.
 
+**All coordinate ranges are half-open: the starting coordinate is included and
+the ending coordinate is excluded.** So `24 – 80` is exactly 56 pixels wide,
+covering columns 24 through 79.
+
 ### Bands
 
 | Zone | Vertical extent |
 |---|---|
-| Back wall | y 0 – 151 |
-| Floor | y 152 – 199 |
+| Back wall | y 0 – 152 |
+| Floor | y 152 – 200 |
 
 ### Objects
 
@@ -155,10 +170,13 @@ Windows hands over wildly different images. Measured on this machine:
 **Nothing is ever cropped.** The rule is:
 
 1. Scale the artwork down to fit *entirely* within the 52 × 52 square, keeping
-   its proportions, using nearest-neighbour so it stays crisp.
+   its proportions, using **high-quality smooth downscaling**. Nearest-neighbour
+   is wrong here: shrinking a 600 × 600 photographic cover by dropping pixels
+   makes it jagged and noisy. Smooth downscaling to the logical size is what
+   preserves it.
 2. A square cover fills the slot exactly.
-3. A 16:9 image lands as 52 × 29, leaving two bands of about 11px above and
-   below.
+3. A 16:9 image lands as 52 × 29, leaving 23 rows of fill split as evenly as
+   possible above and below.
 4. Fill those bands with a colour **derived from the artwork itself** — the
    dominant colour of the image, darkened slightly so the artwork still reads as
    the brightest thing in the sleeve.
@@ -167,6 +185,11 @@ Windows hands over wildly different images. Measured on this machine:
 
 The same derived colour is reused for the tiny record label, which is too small
 to show a scaled-down cover legibly.
+
+**Nearest-neighbour belongs at the other end of the pipeline.** The completed
+320 × 200 room — album artwork already composited into it at logical size — is
+enlarged to 2×, 3× or 4× with nearest-neighbour, which is what keeps the pixels
+square and hard. Smooth on the way down, hard on the way up.
 
 ### Animation states
 
@@ -194,10 +217,12 @@ There is deliberately **no beat synchronisation** anywhere. That would need
 system audio capture and analysis, and would make the cat look mechanically
 tied to the music instead of alive.
 
-### One thing the art must not depend on
+### No progress decoration at all
 
-**Track position is optional.** foobar2000 publishes no timeline at all — it
-reports 0:00 forever. So no part of the room may depend on knowing how far
-through a track we are. Any progress decoration is drawn only when a valid
-timeline exists and is simply absent otherwise, with nothing left behind to look
-broken. There is no workaround for this and none should be attempted.
+foobar2000 publishes no timeline — it reports 0:00 forever — so a progress
+indicator would appear for two players and vanish for the third.
+
+**v0.1 therefore has none.** Not hidden conditionally, not degraded: simply not
+built. Behaving identically for every player is worth more than a decoration the
+room does not need, and it removes a whole class of "why is it missing here"
+confusion. No workaround for foobar2000's missing timeline is to be attempted.
