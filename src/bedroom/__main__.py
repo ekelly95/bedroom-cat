@@ -58,6 +58,9 @@ def resolve_zoom(settings: QSettings, requested: int | None) -> int:
     canvas = (assets.layout().width, assets.layout().height)
     screen = QGuiApplication.primaryScreen()
     area = screen.availableGeometry() if screen else None
+    # Room left for the window's own frame and for a taskbar that the available
+    # geometry does not always account for. Generous rather than exact: landing
+    # one size down is a shrug, and a window taller than the screen is not.
     ceiling = (
         largest_zoom_that_fits(canvas, (area.width() - 80, area.height() - 120))
         if area
@@ -65,7 +68,12 @@ def resolve_zoom(settings: QSettings, requested: int | None) -> int:
     )
     if requested is not None:
         return min(requested, ceiling)
-    remembered = int(settings.value("zoom", 2))
+    # Settings are a file a person can edit and a machine can corrupt, so this
+    # takes whatever is there and falls back rather than raising at startup.
+    try:
+        remembered = int(settings.value("zoom", 2))
+    except (TypeError, ValueError):
+        remembered = 2
     if remembered not in ZOOM_LEVELS:
         remembered = 2
     return min(remembered, ceiling)
@@ -112,7 +120,7 @@ def run_demo(window: BedroomWindow, light: str | None = None) -> object:
             )
         )
         window.set_controls(now.controls)
-        window.setWindowTitle(describe(now, demo=True) + "  ·  demo")
+        window.setWindowTitle(describe(now, demo=True))
 
     timer = QTimer(window)
     timer.timeout.connect(tick)
@@ -124,6 +132,9 @@ def run_demo(window: BedroomWindow, light: str | None = None) -> object:
 def run_windows(
     window: BedroomWindow, settings: QSettings, light: str | None = None
 ) -> object:
+    # Imported here rather than at module level on purpose: these are the only
+    # things that pull in the winrt wheels, and `--demo` has to keep working on
+    # a machine where those are missing or broken.
     from .artwork import ArtworkCache
     from .source_windows import WindowsSource
 

@@ -14,13 +14,13 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QCoreApplication, QTimer  # noqa: E402
-from PySide6.QtGui import QGuiApplication  # noqa: E402
+from PySide6.QtCore import QCoreApplication, QTimer
+from PySide6.QtGui import QGuiApplication
 
-from bedroom import assets_loader as assets  # noqa: E402
-from bedroom.artwork import ArtworkCache, display_colour  # noqa: E402
-from bedroom.scene import Frame, amp_colour, compose, time_of_day  # noqa: E402
-from bedroom.source_windows import WindowsSource  # noqa: E402
+from bedroom import assets_loader as assets
+from bedroom.artwork import ArtworkCache, display_colour
+from bedroom.scene import Frame, amp_colour, compose, time_of_day
+from bedroom.source_windows import WindowsSource
 
 
 def main() -> int:
