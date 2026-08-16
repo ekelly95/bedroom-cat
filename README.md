@@ -56,14 +56,19 @@ Specifically:
 - **Album is effectively Spotify-only.** It cannot appear anywhere the layout
   depends on it.
 - **Artwork varies wildly in shape and size** — from a 150×83 widescreen video
-  still to a 600×600 square cover. The record sleeve has to look right with
-  both, so wide images are centre-cropped to square rather than letterboxed.
+  still to a 600×600 square cover. **Nothing is ever cropped.** Artwork is
+  scaled to fit entirely inside the square sleeve, and the leftover bands are
+  filled with a colour taken from the artwork itself, so a widescreen video
+  still sits in a sleeve that looks deliberate rather than broken.
 - **Transport controls must grey out from the live `controls` flags, per player
   and per moment.** They are not fixed per application: Spotify reported
   `previous` as unavailable throughout this session.
 - **Several players publish at once, all reporting `PLAYING`.** This is the
-  normal case, not an edge case. Windows names one of them "current" — the most
-  recently interacted-with — and that is the right thing to follow.
+  normal case here, not an edge case, which rules out "follow the first session
+  that is playing" — it would pick an arbitrary one of the three. The app
+  follows the session Windows itself names as current, shows a small source
+  selector whenever more than one session exists, and remembers an explicit
+  choice.
 - **Spotify keeps publishing when the music is playing on a phone**, mirrored
   over Spotify Connect. The room works for remote playback too.
 
