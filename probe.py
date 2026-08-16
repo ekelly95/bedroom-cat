@@ -1,8 +1,8 @@
 """Report exactly what Windows tells us about currently-playing media.
 
-This is the Step 1 spike: it answers whether the players Edmund actually uses
-publish usable now-playing information, and it stays in the repo afterwards as a
-diagnostic for when a player stops cooperating.
+This is the Step 1 spike: it answers whether the players this was built for
+actually publish usable now-playing information, and it stays in the repo
+afterwards as a diagnostic for when a player stops cooperating.
 
 Run it, then play something in Brave, Spotify and foobar2000 in turn:
 

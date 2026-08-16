@@ -1018,7 +1018,7 @@ def light_overlay(when: str = "day") -> Image.Image:
 # key light, a warm/cool split between highlight and shadow, a vignette and a
 # quantized palette.
 #
-# Two deliberate departures from the shader, both at Edmund's direction:
+# Two deliberate departures from the shader, both decided on the renders:
 #
 #   - its `cone` term is dropped. A beam thrown from the lamp across the room was
 #     rejected twice during the polish pass, and the answer did not change when
