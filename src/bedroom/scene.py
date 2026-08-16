@@ -18,6 +18,9 @@ class Frame:
     label_colour: QColor | None = None
     cat_frame: int = 0
     dim: bool = False
+    # Distinct from `not dim`: with nothing playing at all the room is quiet but
+    # bright — an empty daytime bedroom, not a paused one.
+    playing: bool = False
 
 
 def compose(frame: Frame) -> QImage:
