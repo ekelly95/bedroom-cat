@@ -52,9 +52,9 @@ alone, and a bad reference is worse than none.
 > Centre foreground: a small round rug on the floorboards, and sitting on it, an
 > extremely fat cat — round as a loaf of bread, short legs tucked under, thick
 > tail curled round, contented half-closed eyes. The cat is drawn in
-> three-quarter profile, turned to its left so it faces the stereo on the left
-> of the room, with both ears and the curve of its back clearly visible. The cat
-> is the heart of the picture.
+> three-quarter profile, head towards the **viewer's left**, facing the stereo,
+> with its tail curled round to the viewer's right and both ears and the curve
+> of its back clearly visible. The cat is the heart of the picture.
 >
 > A few restrained extras and no more: a potted plant, a mug, a small framed
 > picture on the wall.
@@ -95,14 +95,46 @@ regenerating:
    interior can be blank, plain, or an abstract shape — the real album art is
    inserted there by the app, so whatever the generator puts inside is
    discarded.
-3. **The cat is unmistakably fat**, in three-quarter profile turned to its left
-   towards the stereo, and clearly readable as a separate silhouette against the
-   floor and rug behind it.
+3. **The cat is unmistakably fat**, in three-quarter profile with its head
+   towards the viewer's left facing the stereo, and clearly readable as a
+   separate silhouette against the floor and rug behind it. ("Turned to its
+   left" is ambiguous — the cat's left is the viewer's right. State it as the
+   viewer sees it.)
 4. **No text anywhere**, including on the sleeve, posters or record labels.
 5. **The composition is identical across all three lighting versions.** This is
    why evening and night are produced as relighting edits of the approved
    daytime image rather than generated separately — same objects in the same
    places, only the light changes.
+
+### The approved daytime reference
+
+Approved 2026-08-15. Saved at `docs/reference/day.png`.
+
+It matched the composition spec closely without having been given the numbers —
+sideboard, cat, window, bed and both speakers all landed within a few logical
+pixels of their specified positions. The palette, the flat hard-edged style, the
+sunlight falling across the floorboards and the cat itself are all taken as-is.
+
+It also added three things worth keeping: curtains and a rod at the window, a
+double bed rather than a single, and a view of trees and sea rather than
+rooftops. The night relight should keep the trees and sea — it must not become a
+city skyline.
+
+**Three deliberate deviations when the sprites are authored:**
+
+1. **The album sleeve is drawn larger than the reference shows it.** The
+   reference sleeve is roughly 44 × 42 logical pixels; the spec calls for
+   56 × 56. Album artwork is the entire point of the app, so the spec size wins
+   and the sleeve grows a little relative to everything around it.
+2. **A small amplifier with a display is added** to the sideboard beside the
+   turntable. The reference has no amp, so there is nowhere for the blinking
+   display to live.
+3. **The cat is drawn slightly higher and smaller** than the reference places
+   it, to sit within its specified 64 × 48 box and keep clear of the sideboard's
+   drawers.
+
+None of these need a regenerated reference. The reference exists for mood,
+palette and lighting; the geometry comes from Part 2.
 
 ---
 
