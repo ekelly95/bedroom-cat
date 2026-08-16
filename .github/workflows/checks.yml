@@ -14,9 +14,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v7
+      # Pinned to exact releases rather than a moving major tag. setup-uv stopped
+      # publishing one at v7 while its releases went on to v10, so `@v10` does not
+      # resolve and `@v7` would be three majors behind. Both of these run on
+      # node24; the first version of this workflow used tags still on node20.
+      - uses: actions/checkout@v7.0.1
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
