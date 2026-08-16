@@ -11,10 +11,11 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 from . import assets_loader as assets
-from .artwork import fit_static
+from .artwork import display_colour, fit_static
 from .cat import CatMind
 from .model import Controls, NowPlaying, PlaybackState
-from .scene import Frame
+from .platter import Platter
+from .scene import Frame, amp_colour, time_of_day
 from .source_demo import DemoSource
 from .window import FOLLOW_WINDOWS, ZOOM_LEVELS, BedroomWindow, largest_zoom_that_fits
 
@@ -68,7 +69,8 @@ def run_demo(window: BedroomWindow, settings: QSettings) -> object:
     layout = assets.layout()
     demo = DemoSource()
     covers = [str(p) for p in sorted((assets.ASSETS / "demo").glob("cover-*.png"))]
-    cat = CatMind(frames=layout.cat_breathe_frames)
+    cat = CatMind(clips=layout.cat_clips, resting=layout.resting_clip)
+    platter = Platter(frames=layout.record_frames)
     clock = {"last": time.monotonic()}
 
     window.set_demo(True)
@@ -78,19 +80,27 @@ def run_demo(window: BedroomWindow, settings: QSettings) -> object:
     def tick() -> None:
         demo.advance(TICK_MS / 1000)
         now = demo.now_playing()
-        artwork, colour = fit_static(covers[demo.cover_index], layout.sleeve.width)
+        when = time_of_day()
+        artwork, colour = fit_static(covers[demo.cover_index], layout.sleeve.width, when)
         playing = now.state is PlaybackState.PLAYING
 
         elapsed = time.monotonic() - clock["last"]
         clock["last"] += elapsed
         cat.observe(playing, now.track_key)
         cat.advance(elapsed)
+        platter.advance(elapsed, playing=playing)
 
         window.set_frame(
             Frame(
                 artwork=artwork,
                 label_colour=colour,
+                amp_colour=amp_colour(
+                    display_colour(colour), playing=playing, at=time.monotonic()
+                ),
+                cat_clip=cat.clip,
                 cat_frame=cat.frame,
+                record_frame=platter.frame,
+                light=when,
                 dim=not playing,
                 playing=playing,
             )
@@ -113,7 +123,8 @@ def run_windows(window: BedroomWindow, settings: QSettings) -> object:
     cache = ArtworkCache(layout.sleeve.width)
     source = WindowsSource()
     latest: dict[str, NowPlaying | None] = {"now": None}
-    cat = CatMind(frames=layout.cat_breathe_frames)
+    cat = CatMind(clips=layout.cat_clips, resting=layout.resting_clip)
+    platter = Platter(frames=layout.record_frames)
     clock = {"last": time.monotonic()}
 
     remembered = str(settings.value("follow", FOLLOW_WINDOWS))
@@ -135,27 +146,37 @@ def run_windows(window: BedroomWindow, settings: QSettings) -> object:
 
     def tick() -> None:
         now = latest["now"]
+        when = time_of_day()
 
         artwork = colour = None
         if now is not None:
-            entry = cache.get(now.track_key, now.artwork)
+            entry = cache.get(now.track_key, now.artwork, when)
             if entry is not None:
                 artwork, colour = entry
 
         playing = now is not None and now.state is PlaybackState.PLAYING
 
-        # The cat runs on wall-clock time, not on the tick counter, so its pace
-        # is its own and survives a slow or uneven frame.
+        # The cat and the record both run on wall-clock time, not on the tick
+        # counter, so their pace is their own and survives a slow or uneven frame.
         elapsed = time.monotonic() - clock["last"]
         clock["last"] += elapsed
         cat.observe(playing, now.track_key if now is not None else None)
         cat.advance(elapsed)
+        platter.advance(elapsed, playing=playing)
 
         window.set_frame(
             Frame(
                 artwork=artwork,
                 label_colour=colour,
+                amp_colour=amp_colour(
+                    display_colour(colour) if colour is not None else None,
+                    playing=playing,
+                    at=time.monotonic(),
+                ),
+                cat_clip=cat.clip,
                 cat_frame=cat.frame,
+                record_frame=platter.frame,
+                light=when,
                 # Dim means paused. With no session at all the room is quiet but
                 # bright: an empty daytime bedroom, not a paused one.
                 dim=now is not None and not playing,

@@ -18,8 +18,8 @@ from PySide6.QtCore import QCoreApplication, QTimer  # noqa: E402
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 
 from bedroom import assets_loader as assets  # noqa: E402
-from bedroom.artwork import ArtworkCache  # noqa: E402
-from bedroom.scene import Frame, compose  # noqa: E402
+from bedroom.artwork import ArtworkCache, display_colour  # noqa: E402
+from bedroom.scene import Frame, amp_colour, compose, time_of_day  # noqa: E402
 from bedroom.source_windows import WindowsSource  # noqa: E402
 
 
@@ -48,11 +48,24 @@ def main() -> int:
         if colour is not None:
             print(f"label     {colour.name()}")
 
+        # The same frame the app builds, field for field. A proof rendered from a
+        # near-copy of the pipeline is not proof of what the app draws.
+        playing = now.state.is_active
         room = compose(
             Frame(
                 artwork=artwork,
                 label_colour=colour,
-                dim=not now.state.is_active,
+                amp_colour=amp_colour(
+                    display_colour(colour) if colour is not None else None,
+                    playing=playing,
+                    at=0.0,
+                ),
+                # A still, so the record is parked at frame 0 rather than caught
+                # mid-turn. It is still the sprite that draws it.
+                record_frame=0,
+                light=time_of_day(),
+                dim=not playing,
+                playing=playing,
             )
         )
         destination.parent.mkdir(parents=True, exist_ok=True)

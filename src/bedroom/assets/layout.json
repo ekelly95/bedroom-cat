@@ -15,5 +15,63 @@
     "width": 12,
     "height": 7
   },
-  "cat_breathe_frames": 10
+  "amp_slot": {
+    "x": 31,
+    "y": 117,
+    "width": 14,
+    "height": 4
+  },
+  "cat_clips": {
+    "breathe": 12,
+    "perk": 16,
+    "twitch": 8,
+    "glance": 14,
+    "thump": 14,
+    "stretch": 20
+  },
+  "resting_clip": "breathe",
+  "record_frames": 12,
+  "times_of_day": [
+    "day",
+    "evening",
+    "night"
+  ],
+  "sleeve_grade": {
+    "day": {
+      "gain": 1.14,
+      "saturation": 1.25,
+      "steps": 16,
+      "dim": 0.9229,
+      "wash": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "evening": {
+      "gain": 1.14,
+      "saturation": 1.25,
+      "steps": 16,
+      "dim": 0.9229,
+      "wash": [
+        198,
+        112,
+        52,
+        46
+      ]
+    },
+    "night": {
+      "gain": 1.14,
+      "saturation": 1.25,
+      "steps": 16,
+      "dim": 0.9229,
+      "wash": [
+        16,
+        28,
+        58,
+        154
+      ]
+    }
+  }
 }

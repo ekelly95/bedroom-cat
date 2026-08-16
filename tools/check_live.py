@@ -23,9 +23,9 @@ from PySide6.QtCore import QCoreApplication, QEventLoop, QTimer  # noqa: E402
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 
 from bedroom import assets_loader as assets  # noqa: E402
-from bedroom.artwork import ArtworkCache  # noqa: E402
+from bedroom.artwork import ArtworkCache, display_colour  # noqa: E402
 from bedroom.model import NowPlaying, PlaybackState  # noqa: E402
-from bedroom.scene import Frame, compose  # noqa: E402
+from bedroom.scene import Frame, amp_colour, compose, time_of_day  # noqa: E402
 from bedroom.source_windows import WindowsSource  # noqa: E402
 
 PROOF = Path("docs/proof")
@@ -103,8 +103,25 @@ class Checker:
         artwork = colour = None
         if entry is not None:
             artwork, colour = entry
+        # The same frame the app builds, field for field, so this proof cannot
+        # drift away from what the window actually draws.
+        playing = now.state.is_active
         room = compose(
-            Frame(artwork=artwork, label_colour=colour, dim=not now.state.is_active)
+            Frame(
+                artwork=artwork,
+                label_colour=colour,
+                amp_colour=amp_colour(
+                    display_colour(colour) if colour is not None else None,
+                    playing=playing,
+                    at=0.0,
+                ),
+                # A still, so the record is parked at frame 0 rather than caught
+                # mid-turn. It is still the sprite that draws it.
+                record_frame=0,
+                light=time_of_day(),
+                dim=not playing,
+                playing=playing,
+            )
         )
         PROOF.mkdir(parents=True, exist_ok=True)
         out = PROOF / f"live-{app.lower()}.png"

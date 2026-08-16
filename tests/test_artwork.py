@@ -5,7 +5,15 @@ from __future__ import annotations
 import pytest
 from PySide6.QtGui import QColor, QImage, QPainter
 
-from bedroom.artwork import ArtworkCache, band_colour, dominant_colour, fit_to_sleeve
+from bedroom.artwork import (
+    DISPLAY_LIGHTNESS,
+    ArtworkCache,
+    band_colour,
+    display_colour,
+    dominant_colour,
+    fit_to_sleeve,
+    grade_sleeve,
+)
 
 SIZE = 52
 
@@ -116,15 +124,15 @@ def _png(colour: QColor, size: int = 64) -> bytes:
 def test_cache_returns_the_same_object_for_the_same_track() -> None:
     cache = ArtworkCache(SIZE)
     data = _png(QColor(90, 140, 200))
-    first = cache.get(("app", "t", "a", "al"), data)
-    second = cache.get(("app", "t", "a", "al"), data)
+    first = cache.get(("app", "t", "a", "al"), data, "day")
+    second = cache.get(("app", "t", "a", "al"), data, "day")
     assert first is second, "re-decoding every poll is the thing this exists to avoid"
 
 
 def test_cache_separates_different_tracks() -> None:
     cache = ArtworkCache(SIZE)
-    one = cache.get(("app", "one", "a", "al"), _png(QColor(200, 40, 40)))
-    two = cache.get(("app", "two", "a", "al"), _png(QColor(40, 40, 200)))
+    one = cache.get(("app", "one", "a", "al"), _png(QColor(200, 40, 40)), "day")
+    two = cache.get(("app", "two", "a", "al"), _png(QColor(40, 40, 200)), "day")
     assert one is not two
     assert len(cache) == 2
 
@@ -132,16 +140,63 @@ def test_cache_separates_different_tracks() -> None:
 def test_cache_evicts_the_oldest_entry_past_capacity() -> None:
     cache = ArtworkCache(SIZE, capacity=2)
     for i in range(3):
-        cache.get(("app", f"t{i}", "", ""), _png(QColor(10 * i + 20, 100, 100)))
+        cache.get(("app", f"t{i}", "", ""), _png(QColor(10 * i + 20, 100, 100)), "day")
     assert len(cache) == 2
 
 
 def test_cache_ignores_a_track_with_no_artwork() -> None:
     cache = ArtworkCache(SIZE)
-    assert cache.get(("app", "t", "a", "al"), None) is None
+    assert cache.get(("app", "t", "a", "al"), None, "day") is None
     assert len(cache) == 0
 
 
 def test_cache_survives_bytes_that_are_not_an_image() -> None:
     cache = ArtworkCache(SIZE)
-    assert cache.get(("app", "t", "a", "al"), b"this is not a picture") is None
+    assert cache.get(("app", "t", "a", "al"), b"this is not a picture", "day") is None
+
+
+@pytest.mark.parametrize(
+    "colour",
+    [QColor(0, 0, 0), QColor(255, 255, 255), QColor(4, 6, 30), QColor(250, 248, 240)],
+)
+def test_any_cover_colour_can_light_the_display(colour: QColor) -> None:
+    low, high = DISPLAY_LIGHTNESS
+    assert low - 0.01 <= display_colour(colour).lightnessF() <= high + 0.01
+
+
+def test_the_sleeve_grade_saturates_the_artwork() -> None:
+    """The review's sharpest point: the one thing that changes per track sat at
+    the same brightness as its own frame.
+
+    Saturation is what is asserted rather than brightness. The gain is 14% and
+    the vignette across the sleeve takes back 8% of it, which nets out to less
+    than one of the room's sixteen value steps — so a flat colour genuinely
+    cannot move, and a brightness assertion here would be testing the rounding.
+    The lift that matters is relative: the room around the sleeve is pushed down
+    by a shadow tint the sleeve is exempt from.
+    """
+    middle = SIZE // 2
+    cover = fit_to_sleeve(solid(120, 120, QColor(180, 90, 70)), SIZE)
+    before = cover.pixelColor(middle, middle)
+    after = grade_sleeve(cover, "day").pixelColor(middle, middle)
+    assert after.saturation() > before.saturation()
+
+
+def test_the_sleeve_dims_with_the_room() -> None:
+    """It used to be dimmed by a light overlay drawn across the whole canvas. Now
+    that the overlay is baked into the background, the sleeve has to do it itself
+    or it goes back to reading as a sticker at midnight."""
+    cover = fit_to_sleeve(solid(120, 120, QColor(160, 150, 140)), SIZE)
+    middle = SIZE // 2
+    lightness = {
+        when: grade_sleeve(cover, when).pixelColor(middle, middle).lightness()
+        for when in ("day", "evening", "night")
+    }
+    assert lightness["night"] < lightness["evening"] < lightness["day"]
+
+
+def test_the_sleeve_grade_keeps_covers_apart() -> None:
+    """Quantizing to the room's palette must not flatten two records into one."""
+    one = grade_sleeve(fit_to_sleeve(solid(120, 120, QColor(200, 60, 40)), SIZE), "day")
+    two = grade_sleeve(fit_to_sleeve(solid(120, 120, QColor(40, 90, 200)), SIZE), "day")
+    assert one != two
